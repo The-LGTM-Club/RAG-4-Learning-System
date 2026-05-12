@@ -91,12 +91,30 @@ def _build_gemini():
 
 
 @lru_cache(maxsize=1)
+def _build_mistral():
+    from langchain_mistralai.chat_models import ChatMistralAI
+
+    settings = get_settings()
+    model_kwargs: dict[str, Any] = {
+        "model": settings.mistral_model,
+        "temperature": settings.llm_temperature,
+        "max_tokens": settings.mistral_max_tokens,
+    }
+    if settings.mistral_api_key:
+        model_kwargs["api_key"] = settings.mistral_api_key
+
+    return ChatMistralAI(**model_kwargs)
+
+
+@lru_cache(maxsize=1)
 def get_llm():
     settings = get_settings()
     if settings.llm_provider == "hf_local":
         return _build_hf_local()
     if settings.llm_provider == "gemini":
         return _build_gemini()
+    if settings.llm_provider == "mistral":
+        return _build_mistral()
     raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
 
 
@@ -123,4 +141,5 @@ def clear_llm_caches() -> None:
     get_prompt_environment.cache_clear()
     _build_hf_local.cache_clear()
     _build_gemini.cache_clear()
+    _build_mistral.cache_clear()
     get_llm.cache_clear()

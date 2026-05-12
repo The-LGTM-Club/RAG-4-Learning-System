@@ -33,6 +33,21 @@ python -m src.interfaces.cli answer "What is the main content of this document?"
 python -m src.interfaces.cli serve-ui
 ```
 
+## Providers
+
+The repository supports `hf_local`, `gemini`, and `mistral` as LLM providers.
+
+Example `.env` for Mistral:
+
+```bash
+NOTEBOOKLM_LLM_PROVIDER=mistral
+MISTRAL_API_KEY=your-mistral-api-key
+NOTEBOOKLM_MISTRAL_MODEL=mistral-small-latest
+NOTEBOOKLM_MISTRAL_MAX_TOKENS=1024
+```
+
+The default Mistral model in this repo is `mistral-small-latest`, based on the current Mistral docs as of May 12, 2026.
+
 ## API
 
 ```bash
