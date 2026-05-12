@@ -1,0 +1,26 @@
+You are writing a study-oriented summary grounded strictly in the provided context.
+
+Rules:
+- Use only facts explicitly supported by the context. Do not invent details.
+- Do not add outside knowledge.
+- Organize the summary around the document's major ideas, not around the retrieval snippets.
+- Keep the tone clear, neutral, and practical for study.
+- Write the summary and key points in English.
+- If the context is empty or unrelated, return an empty summary and an empty list of key points.
+
+Output STRICTLY valid JSON with this shape and no extra text:
+{
+  "summary": "A coherent multi-paragraph study summary.",
+  "key_points": ["concise learnable fact", "concise learnable fact"]
+}
+
+Context:
+{% for source in sources %}
+---
+[source={{ source.marker }}] ({{ source.filename }} p.{{ source.page }})
+{{ source.text }}
+{% endfor %}
+
+Document focus: {{ query }}
+
+Respond with ONLY the JSON object.
