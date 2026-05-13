@@ -290,21 +290,52 @@ See `.env.example` for the current baseline values, then add provider-specific k
 ## Repository Structure
 
 ```text
-data/                  PDF corpus
-src/
-  prompts/             Jinja prompt templates
-  interfaces/          FastAPI, Typer CLI, Gradio UI
-  evaluation/          Benchmark CSV and evaluation scripts
-  config.py            Runtime settings
-  schemas.py           Pydantic models
-  indexing.py          PDF loading and chunk ingestion
-  store.py             Embeddings and Qdrant helpers
-  rag.py               Retrieval and grounded answering
-  learning.py          Summary, quiz, flashcards
-  llm.py               Model provider and prompt rendering
-  filters.py           Text cleanup and retrieval filters
-  export.py            Markdown and JSON export helpers
-storage/qdrant/        Local vector database files
+NotebookLM/
+|-- .env.example                  Example environment configuration
+|-- .gitignore                    Git ignore rules
+|-- README.md                     Project documentation
+|-- pyproject.toml                Project metadata and Python requirements
+|-- requirements.txt              Pip install requirements
+|-- data/                         PDF corpus used for ingestion
+|   |-- [Description]-LLMs-Fine-tuning.pdf
+|   |-- [Description]-Poem-Generation-GPT2.pdf
+|   |-- [Description]-Pretraining-GPT.pdf
+|   |-- [Description]-Project-2.2-Text-Classification-Naive-Bayes-Vector-Database.pdf
+|   |-- [Reading]-LLM-Alignment.pdf
+|   |-- [Reading]-Reasoning-LLMs.pdf
+|   `-- [Reading_Quiz]-Question-Answering.pdf
+|-- src/
+|   |-- __init__.py
+|   |-- config.py                 Runtime settings loaded from .env
+|   |-- export.py                 Markdown and JSON export helpers
+|   |-- filters.py                Text cleanup and retrieval filtering
+|   |-- indexing.py               PDF loading, chunking, and ingestion
+|   |-- learning.py               Summary, quiz, and flashcard generation
+|   |-- llm.py                    LLM provider setup and prompt invocation
+|   |-- rag.py                    Retrieval and grounded answering pipeline
+|   |-- schemas.py                Pydantic request and response models
+|   |-- store.py                  Embeddings and local Qdrant helpers
+|   |-- evaluation/
+|   |   |-- __init__.py
+|   |   |-- benchmark_rag.csv     Evaluation benchmark dataset
+|   |   |-- chunking_strategies.py
+|   |   |-- ragas_evaluator.py
+|   |   |-- run_chunking.py
+|   |   `-- run_reranking.py
+|   |-- interfaces/
+|   |   |-- __init__.py
+|   |   |-- api.py                FastAPI application
+|   |   |-- cli.py                Typer CLI entrypoint
+|   |   |-- styles.py             Shared Gradio CSS
+|   |   `-- ui.py                 Gradio interface
+|   `-- prompts/
+|       |-- answer.jinja2
+|       |-- flashcards.jinja2
+|       |-- quiz.jinja2
+|       |-- summary_document.jinja2
+|       `-- summary_query.jinja2
+`-- storage/
+    `-- qdrant/                   Local embedded Qdrant data files
 ```
 
 ## Troubleshooting
