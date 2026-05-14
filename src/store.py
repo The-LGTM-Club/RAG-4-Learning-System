@@ -56,6 +56,48 @@ def get_vector_store() -> QdrantVectorStore:
     )
 
 
+def _source_filter(source: str) -> qmodels.Filter:
+    return qmodels.Filter(
+        must=[
+            qmodels.FieldCondition(
+                key="metadata.source",
+                match=qmodels.MatchValue(value=source),
+            )
+        ]
+    )
+
+
+def count_chunks_by_source(source: str) -> int:
+    settings = get_settings()
+    client = get_client()
+    if not client.collection_exists(settings.qdrant_collection):
+        return 0
+    return int(
+        client.count(
+            collection_name=settings.qdrant_collection,
+            count_filter=_source_filter(source),
+            exact=True,
+        ).count
+    )
+
+
+def delete_chunks_by_source(source: str) -> int:
+    settings = get_settings()
+    client = get_client()
+    if not client.collection_exists(settings.qdrant_collection):
+        return 0
+
+    deleted_chunks = count_chunks_by_source(source)
+    if not deleted_chunks:
+        return 0
+
+    client.delete(
+        collection_name=settings.qdrant_collection,
+        points_selector=qmodels.FilterSelector(filter=_source_filter(source)),
+    )
+    return deleted_chunks
+
+
 def collection_count() -> int:
     settings = get_settings()
     client = get_client()
