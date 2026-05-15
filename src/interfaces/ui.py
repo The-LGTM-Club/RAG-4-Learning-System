@@ -3,10 +3,18 @@ from __future__ import annotations
 import gradio as gr
 
 from src.config import get_settings
+from src.documents import (
+    delete_registered_document,
+    list_registered_documents,
+    reingest_registered_document,
+)
 from src.export import (
     answer_to_markdown,
+    delete_document_to_markdown,
+    documents_to_markdown,
     flashcards_to_markdown,
     quiz_to_markdown,
+    reingest_document_to_markdown,
     summary_to_markdown,
 )
 from src.indexing import ingest_data_directory, save_and_ingest_pdf
@@ -82,6 +90,19 @@ def _ingest(path: str, use_ocr: bool, ocr_force_all_pages: bool) -> str:
     return f"Ingested {count} chunks."
 
 
+def _documents() -> str:
+    return documents_to_markdown(list_registered_documents())
+
+
+def _delete_document(document_id: str) -> str:
+    return delete_document_to_markdown(delete_registered_document(document_id.strip()))
+
+
+def _reingest_document(document_id: str) -> str:
+    result = reingest_registered_document(document_id.strip())
+    return reingest_document_to_markdown(result)
+
+
 def build_demo() -> gr.Blocks:
     settings = get_settings()
 
@@ -110,6 +131,30 @@ def build_demo() -> gr.Blocks:
                 _ingest,
                 inputs=[ingest_path, ingest_ocr, ingest_ocr_force],
                 outputs=ingest_output,
+            )
+
+        with gr.Tab("Documents"):
+            documents_refresh = gr.Button("Refresh document registry", variant="primary")
+            documents_output = gr.Markdown()
+            documents_refresh.click(_documents, outputs=documents_output)
+
+            document_id = gr.Textbox(
+                label="Document ID",
+                placeholder="Paste a registered document ID",
+            )
+            delete_button = gr.Button("Delete document")
+            reingest_button = gr.Button("Re-ingest document")
+            document_action_output = gr.Markdown()
+
+            delete_button.click(
+                _delete_document,
+                inputs=document_id,
+                outputs=document_action_output,
+            )
+            reingest_button.click(
+                _reingest_document,
+                inputs=document_id,
+                outputs=document_action_output,
             )
 
         with gr.Tab("Answer"):

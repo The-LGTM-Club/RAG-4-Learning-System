@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     project_name: str = "NotebookLM RAG"
 
     data_dir: Path = Path("data")
+    registry_path: Path = Path("storage/document_registry.json")
     storage_dir: Path = Path("storage/qdrant")
     qdrant_collection: str = "rag_chunks"
 
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     hf_model: str = "Qwen/Qwen2.5-1.5B-Instruct"
     hf_max_new_tokens: int = Field(default=1024, ge=1)
 
+    gemini_api_key: str | None = Field(default=None, validation_alias="GOOGLE_API_KEY")
     gemini_model: str = "gemini-2.5-flash"
 
     mistral_api_key: str | None = Field(default=None, validation_alias="MISTRAL_API_KEY")
@@ -63,6 +65,7 @@ class Settings(BaseSettings):
 
 def _ensure_directories(settings: Settings) -> Settings:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.registry_path.parent.mkdir(parents=True, exist_ok=True)
     settings.storage_dir.mkdir(parents=True, exist_ok=True)
     return settings
 

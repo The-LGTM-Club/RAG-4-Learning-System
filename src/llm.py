@@ -84,9 +84,15 @@ def _build_gemini():
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     settings = get_settings()
+    model_kwargs: dict[str, Any] = {
+        "model": settings.gemini_model,
+        "temperature": settings.llm_temperature,
+    }
+    if settings.gemini_api_key:
+        model_kwargs["google_api_key"] = settings.gemini_api_key
+
     return ChatGoogleGenerativeAI(
-        model=settings.gemini_model,
-        temperature=settings.llm_temperature,
+        **model_kwargs,
     )
 
 

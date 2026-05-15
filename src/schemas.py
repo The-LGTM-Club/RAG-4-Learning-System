@@ -86,6 +86,34 @@ class IngestResponse(BaseModel):
     ingested_chunks: int
 
 
+class DocumentRecord(BaseModel):
+    document_id: str
+    filename: str
+    source: str
+    source_key: str
+    checksum: str
+    file_size: int
+    page_count: int
+    chunk_count: int
+    last_ingested_at: str
+    source_exists: bool = True
+
+
+class DocumentRegistryResponse(BaseModel):
+    documents: list[DocumentRecord]
+
+
+class DeleteDocumentResponse(BaseModel):
+    document: DocumentRecord
+    deleted_chunks: int
+
+
+class ReingestResponse(BaseModel):
+    document: DocumentRecord
+    deleted_chunks: int
+    ingested_chunks: int
+
+
 class AnswerRequest(BaseModel):
     question: str
     k: Optional[int] = Field(default=None, ge=1)

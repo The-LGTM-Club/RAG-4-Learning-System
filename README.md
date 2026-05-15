@@ -61,6 +61,8 @@ GOOGLE_API_KEY=your-google-api-key
 NOTEBOOKLM_GEMINI_MODEL=gemini-2.5-flash
 ```
 
+The Gemini integration reads `GOOGLE_API_KEY` directly from `.env` through the project settings layer.
+
 Mistral provider:
 
 ```env
@@ -70,7 +72,7 @@ NOTEBOOKLM_MISTRAL_MODEL=mistral-small-latest
 NOTEBOOKLM_MISTRAL_MAX_TOKENS=1024
 ```
 
-`NOTEBOOKLM_DATA_DIR` defaults to `data`, and `NOTEBOOKLM_STORAGE_DIR` defaults to `storage/qdrant`.
+`NOTEBOOKLM_DATA_DIR` defaults to `data`, `NOTEBOOKLM_REGISTRY_PATH` defaults to `storage/document_registry.json`, and `NOTEBOOKLM_STORAGE_DIR` defaults to `storage/qdrant`.
 
 OCR-related settings:
 
@@ -146,6 +148,11 @@ python -m src.interfaces.cli ingest --ocr-force-all-pages
 
 Use `--recreate` when you want to reset the local vector index after changing the corpus or chunking behavior.
 
+Ingestion is source-aware:
+
+- Re-ingesting the same file path replaces the previous chunks for that source instead of appending duplicates.
+- The project also keeps a document registry under `storage/document_registry.json` for lifecycle operations.
+
 ## CLI Usage
 
 Answer a question:
@@ -187,6 +194,9 @@ python -m src.interfaces.cli flashcards "Create flashcards for pretraining GPT" 
 Available CLI commands:
 
 - `ingest`
+- `documents`
+- `delete-document`
+- `reingest-document`
 - `answer`
 - `summary`
 - `quiz`
@@ -209,6 +219,11 @@ http://127.0.0.1:7860
 ```
 
 The Ingest tab includes checkboxes for OCR fallback and OCR on every page.
+The Documents tab lets you:
+
+- list registered documents
+- delete a document and its indexed chunks
+- re-ingest a registered document from its original source path
 
 The default host and port come from:
 
@@ -235,6 +250,9 @@ Main endpoints:
 
 - `GET /health`
 - `POST /ingest`
+- `GET /documents`
+- `DELETE /documents/{document_id}`
+- `POST /documents/{document_id}/reingest`
 - `POST /answer`
 - `POST /summary`
 - `POST /quiz`
@@ -261,6 +279,8 @@ curl -X POST http://127.0.0.1:8000/answer -H "Content-Type: application/json" -d
 Request payloads:
 
 - `/ingest`: `{"path": "optional path", "recreate": false, "ocr": true, "ocr_force_all_pages": false}`
+- `/ingest`: `{"path": "optional path", "recreate": false}`
+- `/documents/{document_id}/reingest`: no request body is required
 - `/answer`: `{"question": "...", "k": 5, "filename": "optional.pdf"}`
 - `/summary`: `{"query": "...", "k": 12, "filename": "optional.pdf"}`
 - `/quiz`: `{"query": "...", "count": 5, "filename": "optional.pdf"}`
@@ -299,6 +319,7 @@ Notes:
 The most important environment variables are:
 
 - `NOTEBOOKLM_DATA_DIR`
+- `NOTEBOOKLM_REGISTRY_PATH`
 - `NOTEBOOKLM_STORAGE_DIR`
 - `NOTEBOOKLM_QDRANT_COLLECTION`
 - `NOTEBOOKLM_CHUNK_SIZE`
@@ -327,7 +348,7 @@ The most important environment variables are:
 - `NOTEBOOKLM_UI_PORT`
 - `NOTEBOOKLM_UI_SHARE`
 
-See `.env.example` for the current baseline values, then add provider-specific keys such as `GOOGLE_API_KEY` or `MISTRAL_API_KEY` when needed.
+See `.env.example` for the current baseline values, including provider-specific keys such as `GOOGLE_API_KEY` and `MISTRAL_API_KEY`.
 
 ## Repository Structure
 
@@ -349,6 +370,7 @@ NotebookLM/
 |-- src/
 |   |-- __init__.py
 |   |-- config.py                 Runtime settings loaded from .env
+|   |-- documents.py              Document lifecycle operations
 |   |-- export.py                 Markdown and JSON export helpers
 |   |-- filters.py                Text cleanup and retrieval filtering
 |   |-- indexing.py               PDF loading, chunking, and ingestion
@@ -356,6 +378,7 @@ NotebookLM/
 |   |-- llm.py                    LLM provider setup and prompt invocation
 |   |-- ocr.py                    OCR helpers for scanned or low-text PDFs
 |   |-- rag.py                    Retrieval and grounded answering pipeline
+|   |-- registry.py               Document registry persistence
 |   |-- schemas.py                Pydantic request and response models
 |   |-- store.py                  Embeddings and local Qdrant helpers
 |   |-- evaluation/
@@ -378,6 +401,7 @@ NotebookLM/
 |       |-- summary_document.jinja2
 |       `-- summary_query.jinja2
 `-- storage/
+    |-- document_registry.json    Document lifecycle registry
     `-- qdrant/                   Local embedded Qdrant data files
 ```
 
@@ -397,6 +421,9 @@ This is expected for `hf_local`, because the local LLM and embedding model are d
 
 Responses are empty or say no information was found:
 Run `python -m src.interfaces.cli ingest` first, or rebuild the collection with `python -m src.interfaces.cli ingest --recreate`.
+
+You deleted or moved a source PDF after ingest:
+The document may still appear in the registry with `source_exists = false`. Restore the file, delete the registry entry, or re-ingest from a new source path.
 
 You want a fully local setup:
 Keep `NOTEBOOKLM_LLM_PROVIDER=hf_local` and do not configure Gemini or Mistral keys.

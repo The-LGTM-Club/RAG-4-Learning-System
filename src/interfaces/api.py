@@ -5,12 +5,19 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 
 from src.config import get_settings
+from src.documents import (
+    delete_registered_document,
+    list_registered_documents,
+    reingest_registered_document,
+)
 from src.indexing import ingest_data_directory, save_and_ingest_pdf
 from src.learning import generate_flashcards, generate_quiz, summarize
 from src.rag import answer
 from src.schemas import (
     AnswerRequest,
     AnswerResponse,
+    DeleteDocumentResponse,
+    DocumentRegistryResponse,
     FlashcardRequest,
     FlashcardSet,
     HealthResponse,
@@ -18,6 +25,7 @@ from src.schemas import (
     IngestResponse,
     QuizRequest,
     QuizSet,
+    ReingestResponse,
     Summary,
     SummaryRequest,
 )
@@ -57,6 +65,27 @@ def ingest(payload: IngestRequest) -> IngestResponse:
                 ocr_force_all_pages=payload.ocr_force_all_pages,
             )
         return IngestResponse(ingested_chunks=count)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/documents", response_model=DocumentRegistryResponse)
+def documents_endpoint() -> DocumentRegistryResponse:
+    return list_registered_documents()
+
+
+@app.delete("/documents/{document_id}", response_model=DeleteDocumentResponse)
+def delete_document_endpoint(document_id: str) -> DeleteDocumentResponse:
+    try:
+        return delete_registered_document(document_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/documents/{document_id}/reingest", response_model=ReingestResponse)
+def reingest_document_endpoint(document_id: str) -> ReingestResponse:
+    try:
+        return reingest_registered_document(document_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

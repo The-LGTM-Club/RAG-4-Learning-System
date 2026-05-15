@@ -7,10 +7,18 @@ from typing import Optional
 import typer
 
 from src.config import get_settings
+from src.documents import (
+    delete_registered_document,
+    list_registered_documents,
+    reingest_registered_document,
+)
 from src.export import (
     answer_to_markdown,
+    delete_document_to_markdown,
+    documents_to_markdown,
     flashcards_to_markdown,
     quiz_to_markdown,
+    reingest_document_to_markdown,
     summary_to_markdown,
     to_json,
 )
@@ -54,6 +62,41 @@ def ingest(
             ocr_force_all_pages=force_ocr,
         )
     _emit(json.dumps({"ingested_chunks": count}, ensure_ascii=False, indent=2))
+
+
+@app.command(name="documents")
+def documents_cmd(
+    output: str = typer.Option("markdown", help="markdown or json"),
+) -> None:
+    result = list_registered_documents()
+    if _normalize_output(output) == "json":
+        _emit(to_json(result))
+        return
+    _emit(documents_to_markdown(result))
+
+
+@app.command(name="delete-document")
+def delete_document_cmd(
+    document_id: str = typer.Argument(...),
+    output: str = typer.Option("markdown", help="markdown or json"),
+) -> None:
+    result = delete_registered_document(document_id)
+    if _normalize_output(output) == "json":
+        _emit(to_json(result))
+        return
+    _emit(delete_document_to_markdown(result))
+
+
+@app.command(name="reingest-document")
+def reingest_document_cmd(
+    document_id: str = typer.Argument(...),
+    output: str = typer.Option("markdown", help="markdown or json"),
+) -> None:
+    result = reingest_registered_document(document_id)
+    if _normalize_output(output) == "json":
+        _emit(to_json(result))
+        return
+    _emit(reingest_document_to_markdown(result))
 
 
 @app.command(name="answer")
