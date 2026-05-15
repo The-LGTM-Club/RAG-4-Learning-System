@@ -66,14 +66,27 @@ def _flashcards(query: str, filename: str, count: float) -> str:
     return flashcards_to_markdown(result)
 
 
-def _ingest(path: str) -> str:
+def _ingest(path: str, use_ocr: bool, ocr_force_all_pages: bool) -> str:
     path = path.strip()
+    ocr_enabled = True if use_ocr else None
+    force_ocr = True if ocr_force_all_pages else None
     if not path:
-        count = ingest_data_directory()
+        count = ingest_data_directory(
+            ocr_enabled=ocr_enabled,
+            ocr_force_all_pages=force_ocr,
+        )
     elif path.lower().endswith(".pdf"):
-        count = save_and_ingest_pdf(path)
+        count = save_and_ingest_pdf(
+            path,
+            ocr_enabled=ocr_enabled,
+            ocr_force_all_pages=force_ocr,
+        )
     else:
-        count = ingest_data_directory(path)
+        count = ingest_data_directory(
+            path,
+            ocr_enabled=ocr_enabled,
+            ocr_force_all_pages=force_ocr,
+        )
     return f"Ingested {count} chunks."
 
 
@@ -104,9 +117,21 @@ def build_demo() -> gr.Blocks:
                 label="PDF path or directory",
                 placeholder="Leave blank to ingest ./data",
             )
+            ingest_ocr = gr.Checkbox(
+                label="Use OCR fallback for scanned or low-text pages",
+                value=False,
+            )
+            ingest_ocr_force = gr.Checkbox(
+                label="OCR every page",
+                value=False,
+            )
             ingest_button = gr.Button("Ingest", variant="primary")
             ingest_output = gr.Textbox(label="Status", interactive=False)
-            ingest_button.click(_ingest, inputs=ingest_path, outputs=ingest_output)
+            ingest_button.click(
+                _ingest,
+                inputs=[ingest_path, ingest_ocr, ingest_ocr_force],
+                outputs=ingest_output,
+            )
 
         with gr.Tab("Documents"):
             documents_refresh = gr.Button("Refresh document registry", variant="primary")

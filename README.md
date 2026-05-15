@@ -9,6 +9,7 @@ You do not need to run a separate Qdrant server or Docker container for this pro
 - Python 3.10 or newer
 - Internet access on the first run if you use the default local Hugging Face provider
 - Enough RAM and disk for model downloads and embeddings
+- Tesseract OCR if you want to ingest scanned PDFs with OCR fallback
 
 The default configuration loads:
 
@@ -32,13 +33,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Create a local `.env` file from the example.
+3. Install Tesseract OCR if you want OCR support for scanned PDFs.
+
+On Windows, install Tesseract and make sure the `tesseract` executable is available in `PATH`, or set `NOTEBOOKLM_OCR_TESSERACT_CMD` in `.env`.
+
+4. Create a local `.env` file from the example.
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-4. Choose an LLM provider in `.env`.
+5. Choose an LLM provider in `.env`.
 
 Default local provider:
 
@@ -69,9 +74,26 @@ NOTEBOOKLM_MISTRAL_MAX_TOKENS=1024
 
 `NOTEBOOKLM_DATA_DIR` defaults to `data`, `NOTEBOOKLM_REGISTRY_PATH` defaults to `storage/document_registry.json`, and `NOTEBOOKLM_STORAGE_DIR` defaults to `storage/qdrant`.
 
+OCR-related settings:
+
+```env
+NOTEBOOKLM_OCR_ENABLED=false
+NOTEBOOKLM_OCR_FORCE_ALL_PAGES=false
+NOTEBOOKLM_OCR_LANGUAGE=eng
+NOTEBOOKLM_OCR_DPI=200
+NOTEBOOKLM_OCR_MIN_CHARACTERS=40
+NOTEBOOKLM_OCR_TESSERACT_CMD=
+```
+
+- `NOTEBOOKLM_OCR_ENABLED=true` turns on OCR fallback for low-text pages.
+- `NOTEBOOKLM_OCR_FORCE_ALL_PAGES=true` OCRs every page, even if text extraction already found content.
+- `NOTEBOOKLM_OCR_MIN_CHARACTERS=40` means pages with fewer than 40 cleaned characters are treated as OCR candidates.
+
 ## Data
 
 Put PDF files in `data/`, or pass a file path or directory path directly to the ingest command.
+
+By default, the pipeline reads the PDF text layer with `PyPDFLoader`. If a page is scanned or has too little extractable text, OCR can be enabled as a fallback.
 
 Examples already included in this repo:
 
@@ -110,6 +132,18 @@ Rebuild the collection from scratch:
 
 ```bash
 python -m src.interfaces.cli ingest --recreate
+```
+
+Enable OCR fallback for scanned or low-text pages:
+
+```bash
+python -m src.interfaces.cli ingest --ocr
+```
+
+Force OCR on every page:
+
+```bash
+python -m src.interfaces.cli ingest --ocr-force-all-pages
 ```
 
 Use `--recreate` when you want to reset the local vector index after changing the corpus or chunking behavior.
@@ -184,6 +218,7 @@ Open:
 http://127.0.0.1:7860
 ```
 
+The Ingest tab includes checkboxes for OCR fallback and OCR on every page.
 The Documents tab lets you:
 
 - list registered documents
@@ -232,7 +267,7 @@ curl http://127.0.0.1:8000/health
 Example ingest request:
 
 ```text
-curl -X POST http://127.0.0.1:8000/ingest -H "Content-Type: application/json" -d "{\"path\":\"data\",\"recreate\":false}"
+curl -X POST http://127.0.0.1:8000/ingest -H "Content-Type: application/json" -d "{\"path\":\"data\",\"recreate\":false,\"ocr\":true}"
 ```
 
 Example answer request:
@@ -243,6 +278,7 @@ curl -X POST http://127.0.0.1:8000/answer -H "Content-Type: application/json" -d
 
 Request payloads:
 
+- `/ingest`: `{"path": "optional path", "recreate": false, "ocr": true, "ocr_force_all_pages": false}`
 - `/ingest`: `{"path": "optional path", "recreate": false}`
 - `/documents/{document_id}/reingest`: no request body is required
 - `/answer`: `{"question": "...", "k": 5, "filename": "optional.pdf"}`
@@ -290,6 +326,12 @@ The most important environment variables are:
 - `NOTEBOOKLM_CHUNK_OVERLAP`
 - `NOTEBOOKLM_EMBEDDING_MODEL`
 - `NOTEBOOKLM_EMBEDDING_DEVICE`
+- `NOTEBOOKLM_OCR_ENABLED`
+- `NOTEBOOKLM_OCR_FORCE_ALL_PAGES`
+- `NOTEBOOKLM_OCR_LANGUAGE`
+- `NOTEBOOKLM_OCR_DPI`
+- `NOTEBOOKLM_OCR_MIN_CHARACTERS`
+- `NOTEBOOKLM_OCR_TESSERACT_CMD`
 - `NOTEBOOKLM_LLM_PROVIDER`
 - `NOTEBOOKLM_LLM_TEMPERATURE`
 - `NOTEBOOKLM_HF_MODEL`
@@ -334,6 +376,7 @@ NotebookLM/
 |   |-- indexing.py               PDF loading, chunking, and ingestion
 |   |-- learning.py               Summary, quiz, and flashcard generation
 |   |-- llm.py                    LLM provider setup and prompt invocation
+|   |-- ocr.py                    OCR helpers for scanned or low-text PDFs
 |   |-- rag.py                    Retrieval and grounded answering pipeline
 |   |-- registry.py               Document registry persistence
 |   |-- schemas.py                Pydantic request and response models
@@ -366,6 +409,9 @@ NotebookLM/
 
 `ModuleNotFoundError` when running CLI or API:
 Install dependencies in the active virtual environment with `pip install -r requirements.txt`.
+
+`Tesseract OCR is not installed or not available in PATH.`:
+Install Tesseract OCR and set `NOTEBOOKLM_OCR_TESSERACT_CMD` if the executable is not discoverable automatically.
 
 `No PDF files found for ingestion.`:
 Put PDF files in `data/` or pass an explicit file or directory path to `ingest`.

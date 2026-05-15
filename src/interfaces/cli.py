@@ -41,12 +41,26 @@ def _normalize_output(output: str) -> str:
 def ingest(
     path: Optional[str] = typer.Argument(default=None),
     recreate: bool = typer.Option(False, help="Recreate the Qdrant collection before ingesting."),
+    ocr: bool = typer.Option(False, help="Use OCR fallback for low-text or scanned pages."),
+    ocr_force_all_pages: bool = typer.Option(False, help="Run OCR on every page instead of only low-text pages."),
 ) -> None:
     input_path = Path(path) if path else None
+    ocr_enabled = True if ocr else None
+    force_ocr = True if ocr_force_all_pages else None
     if input_path and input_path.is_file():
-        count = save_and_ingest_pdf(input_path, recreate=recreate)
+        count = save_and_ingest_pdf(
+            input_path,
+            recreate=recreate,
+            ocr_enabled=ocr_enabled,
+            ocr_force_all_pages=force_ocr,
+        )
     else:
-        count = ingest_data_directory(input_path, recreate=recreate)
+        count = ingest_data_directory(
+            input_path,
+            recreate=recreate,
+            ocr_enabled=ocr_enabled,
+            ocr_force_all_pages=force_ocr,
+        )
     _emit(json.dumps({"ingested_chunks": count}, ensure_ascii=False, indent=2))
 
 

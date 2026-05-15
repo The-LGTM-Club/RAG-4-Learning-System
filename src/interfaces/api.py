@@ -45,11 +45,25 @@ def ingest(payload: IngestRequest) -> IngestResponse:
         if payload.path:
             path = Path(payload.path)
             if path.is_dir():
-                count = ingest_data_directory(path, recreate=payload.recreate)
+                count = ingest_data_directory(
+                    path,
+                    recreate=payload.recreate,
+                    ocr_enabled=payload.ocr,
+                    ocr_force_all_pages=payload.ocr_force_all_pages,
+                )
             else:
-                count = save_and_ingest_pdf(path, recreate=payload.recreate)
+                count = save_and_ingest_pdf(
+                    path,
+                    recreate=payload.recreate,
+                    ocr_enabled=payload.ocr,
+                    ocr_force_all_pages=payload.ocr_force_all_pages,
+                )
         else:
-            count = ingest_data_directory(recreate=payload.recreate)
+            count = ingest_data_directory(
+                recreate=payload.recreate,
+                ocr_enabled=payload.ocr,
+                ocr_force_all_pages=payload.ocr_force_all_pages,
+            )
         return IngestResponse(ingested_chunks=count)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

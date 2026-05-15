@@ -29,6 +29,12 @@ class Settings(BaseSettings):
 
     embedding_model: str = "keepitreal/vietnamese-sbert"
     embedding_device: str = "cpu"
+    ocr_enabled: bool = False
+    ocr_force_all_pages: bool = False
+    ocr_language: str = "eng"
+    ocr_dpi: int = Field(default=200, ge=72, le=600)
+    ocr_min_characters: int = Field(default=40, ge=0)
+    ocr_tesseract_cmd: str | None = None
 
     llm_provider: Literal["hf_local", "gemini", "mistral"] = "hf_local"
     llm_temperature: float = Field(default=0.1, ge=0.0, le=2.0)

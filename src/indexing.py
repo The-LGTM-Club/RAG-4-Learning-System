@@ -13,6 +13,8 @@ from loguru import logger
 
 from src.config import get_settings
 from src.filters import clean_text
+from src.ocr import extract_page_texts
+from src.store import ensure_collection, get_vector_store
 from src.registry import clear_registry, upsert_documents, utc_timestamp
 from src.schemas import DocumentRecord
 from src.store import delete_chunks_by_source, ensure_collection, get_vector_store
@@ -32,6 +34,30 @@ def resolve_pdf_paths(path: str | Path | None = None) -> list[Path]:
     return sorted(base_path.glob("*.pdf"))
 
 
+def _resolve_ocr_mode(
+    ocr_enabled: bool | None,
+    ocr_force_all_pages: bool | None,
+) -> tuple[bool, bool]:
+    settings = get_settings()
+    effective_force = (
+        settings.ocr_force_all_pages
+        if ocr_force_all_pages is None
+        else ocr_force_all_pages
+    )
+    effective_enabled = (
+        settings.ocr_enabled
+        if ocr_enabled is None
+        else ocr_enabled
+    )
+    return effective_enabled or effective_force, effective_force
+
+
+def _should_ocr_page(
+    text: str,
+    force_all_pages: bool,
+    min_characters: int,
+) -> bool:
+    return force_all_pages or len(text) < min_characters
 def _file_checksum(path: Path) -> str:
     digest = hashlib.sha1()
     with path.open("rb") as handle:
@@ -53,6 +79,8 @@ def build_chunks(
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
     separators: Sequence[str] | None = None,
+    ocr_enabled: bool | None = None,
+    ocr_force_all_pages: bool | None = None,
 ) -> list[Document]:
     chunks, _ = _build_chunks_and_records(
         pdf_paths=pdf_paths,
@@ -71,6 +99,10 @@ def _build_chunks_and_records(
 ) -> tuple[list[Document], list[DocumentRecord]]:
     settings = get_settings()
     page_docs: list[Document] = []
+    use_ocr, force_ocr_all_pages = _resolve_ocr_mode(
+        ocr_enabled=ocr_enabled,
+        ocr_force_all_pages=ocr_force_all_pages,
+    )
     document_details: dict[str, dict[str, object]] = {}
 
     for path in pdf_paths:
@@ -82,14 +114,38 @@ def _build_chunks_and_records(
         document_id = hashlib.sha1(
             f"{source_key}:{checksum}".encode("utf-8")
         ).hexdigest()[:16]
+        cleaned_pages = [clean_text(doc.page_content) for doc in pages]
+        ocr_texts: dict[int, str] = {}
 
-        for doc in pages:
-            doc.page_content = clean_text(doc.page_content)
+        if use_ocr:
+            page_numbers_to_ocr = [
+                index
+                for index, text in enumerate(cleaned_pages)
+                if _should_ocr_page(
+                    text,
+                    force_ocr_all_pages,
+                    settings.ocr_min_characters,
+                )
+            ]
+            if page_numbers_to_ocr:
+                logger.info(
+                    "Running OCR on {} pages from {}.",
+                    len(page_numbers_to_ocr),
+                    path.name,
+                )
+                ocr_texts = extract_page_texts(path, page_numbers_to_ocr, settings)
+
+        for index, doc in enumerate(pages):
+            extracted_text = cleaned_pages[index]
+            ocr_text = ocr_texts.get(index, "")
+            ocr_used = bool(ocr_text)
+            doc.page_content = ocr_text if ocr_used else extracted_text
             doc.metadata = {
                 "document_id": document_id,
                 "filename": path.name,
                 "source": source,
                 "page": int(doc.metadata.get("page", 0)) + 1,
+                "ocr_used": ocr_used,
             }
         page_docs.extend(pages)
         document_details[document_id] = {
@@ -150,6 +206,8 @@ def ingest_paths(
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
     separators: Sequence[str] | None = None,
+    ocr_enabled: bool | None = None,
+    ocr_force_all_pages: bool | None = None,
 ) -> int:
     ensure_collection(recreate=recreate)
     if not pdf_paths:
@@ -162,6 +220,8 @@ def ingest_paths(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         separators=separators,
+        ocr_enabled=ocr_enabled,
+        ocr_force_all_pages=ocr_force_all_pages,
     )
     if not chunks:
         return 0
@@ -185,19 +245,36 @@ def ingest_paths(
     return len(chunks)
 
 
-def save_and_ingest_pdf(file_path: str | Path, recreate: bool = False) -> int:
+def save_and_ingest_pdf(
+    file_path: str | Path,
+    recreate: bool = False,
+    ocr_enabled: bool | None = None,
+    ocr_force_all_pages: bool | None = None,
+) -> int:
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"PDF file not found: {path}")
-    return ingest_paths([path], recreate=recreate)
+    return ingest_paths(
+        [path],
+        recreate=recreate,
+        ocr_enabled=ocr_enabled,
+        ocr_force_all_pages=ocr_force_all_pages,
+    )
 
 
 def ingest_data_directory(
     directory: str | Path | None = None,
     recreate: bool = False,
+    ocr_enabled: bool | None = None,
+    ocr_force_all_pages: bool | None = None,
 ) -> int:
     pdf_paths = resolve_pdf_paths(directory)
     if not pdf_paths:
         logger.warning("No PDF files found for ingestion.")
         return 0
-    return ingest_paths(pdf_paths, recreate=recreate)
+    return ingest_paths(
+        pdf_paths,
+        recreate=recreate,
+        ocr_enabled=ocr_enabled,
+        ocr_force_all_pages=ocr_force_all_pages,
+    )

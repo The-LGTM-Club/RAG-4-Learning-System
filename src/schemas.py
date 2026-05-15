@@ -12,6 +12,7 @@ class ChunkMetadata(BaseModel):
     page: int
     chunk_id: str
     section: Optional[str] = None
+    ocr_used: Optional[bool] = None
 
 
 class RetrievedChunk(BaseModel):
@@ -77,6 +78,8 @@ class FlashcardSet(BaseModel):
 class IngestRequest(BaseModel):
     path: Optional[str] = None
     recreate: bool = False
+    ocr: Optional[bool] = None
+    ocr_force_all_pages: Optional[bool] = None
 
 
 class IngestResponse(BaseModel):
