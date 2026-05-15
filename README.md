@@ -56,6 +56,8 @@ GOOGLE_API_KEY=your-google-api-key
 NOTEBOOKLM_GEMINI_MODEL=gemini-2.5-flash
 ```
 
+The Gemini integration reads `GOOGLE_API_KEY` directly from `.env` through the project settings layer.
+
 Mistral provider:
 
 ```env
@@ -304,7 +306,7 @@ The most important environment variables are:
 - `NOTEBOOKLM_UI_PORT`
 - `NOTEBOOKLM_UI_SHARE`
 
-See `.env.example` for the current baseline values, then add provider-specific keys such as `GOOGLE_API_KEY` or `MISTRAL_API_KEY` when needed.
+See `.env.example` for the current baseline values, including provider-specific keys such as `GOOGLE_API_KEY` and `MISTRAL_API_KEY`.
 
 ## Repository Structure
 

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     hf_model: str = "Qwen/Qwen2.5-1.5B-Instruct"
     hf_max_new_tokens: int = Field(default=1024, ge=1)
 
+    gemini_api_key: str | None = Field(default=None, validation_alias="GOOGLE_API_KEY")
     gemini_model: str = "gemini-2.5-flash"
 
     mistral_api_key: str | None = Field(default=None, validation_alias="MISTRAL_API_KEY")
