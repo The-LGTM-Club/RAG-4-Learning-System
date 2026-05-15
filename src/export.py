@@ -3,7 +3,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.schemas import AnswerResponse, FlashcardSet, QuizSet, Summary
+from src.schemas import (
+    AnswerResponse,
+    DeleteDocumentResponse,
+    DocumentRegistryResponse,
+    FlashcardSet,
+    QuizSet,
+    ReingestResponse,
+    Summary,
+)
 
 
 def answer_to_markdown(result: AnswerResponse) -> str:
@@ -77,7 +85,49 @@ def flashcards_to_markdown(result: FlashcardSet) -> str:
     return "\n".join(lines).strip()
 
 
-def to_json(data: AnswerResponse | Summary | QuizSet | FlashcardSet) -> str:
+def documents_to_markdown(result: DocumentRegistryResponse) -> str:
+    if not result.documents:
+        return "_No documents registered._"
+
+    lines = ["## Documents"]
+    for document in result.documents:
+        lines.append(f"- {document.document_id} | {document.filename}")
+        lines.append(f"  Source: {document.source}")
+        lines.append(f"  Pages: {document.page_count} | Chunks: {document.chunk_count}")
+        lines.append(
+            f"  Exists: {'yes' if document.source_exists else 'no'} | Ingested: {document.last_ingested_at}"
+        )
+    return "\n".join(lines)
+
+
+def delete_document_to_markdown(result: DeleteDocumentResponse) -> str:
+    return (
+        f"Deleted document `{result.document.document_id}`\n\n"
+        f"- Filename: {result.document.filename}\n"
+        f"- Source: {result.document.source}\n"
+        f"- Deleted chunks: {result.deleted_chunks}"
+    )
+
+
+def reingest_document_to_markdown(result: ReingestResponse) -> str:
+    return (
+        f"Re-ingested document `{result.document.document_id}`\n\n"
+        f"- Filename: {result.document.filename}\n"
+        f"- Source: {result.document.source}\n"
+        f"- Deleted previous chunks: {result.deleted_chunks}\n"
+        f"- Ingested chunks: {result.ingested_chunks}"
+    )
+
+
+def to_json(
+    data: AnswerResponse
+    | Summary
+    | QuizSet
+    | FlashcardSet
+    | DocumentRegistryResponse
+    | DeleteDocumentResponse
+    | ReingestResponse
+) -> str:
     return json.dumps(data.model_dump(), ensure_ascii=False, indent=2)
 
 

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     project_name: str = "NotebookLM RAG"
 
     data_dir: Path = Path("data")
+    registry_path: Path = Path("storage/document_registry.json")
     storage_dir: Path = Path("storage/qdrant")
     qdrant_collection: str = "rag_chunks"
 
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
 
 def _ensure_directories(settings: Settings) -> Settings:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.registry_path.parent.mkdir(parents=True, exist_ok=True)
     settings.storage_dir.mkdir(parents=True, exist_ok=True)
     return settings
 
